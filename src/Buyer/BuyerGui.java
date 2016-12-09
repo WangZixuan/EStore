@@ -1,4 +1,4 @@
-package Seller;
+package Buyer;
 
 import javax.swing.*;
 import java.awt.*;
@@ -6,63 +6,58 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
 /**
- * Created by Zixuan Wang on 2016-11-30.
+ * Created by Zixuan Wang on 2016-12-09.
  */
-class SellerGui extends JFrame
+public class BuyerGui extends JFrame
 {
-    Seller oneSeller;
+    Buyer oneBuyer;
     JTextArea booksList;
 
-    SellerGui()
+    BuyerGui()
     {
         //Make sure that you close the window, you terminate the agent.
         addWindowListener(new WindowAdapter()
         {
             public void windowClosing(WindowEvent e)
             {
-                oneSeller.doDelete();
+                oneBuyer.doDelete();
             }
         });
     }
 
-    public void setGui(Seller seller)
+    public void setGui(Buyer buyer)
     {
-        oneSeller = seller;
+        oneBuyer=buyer;
 
-        setSize(500, 800);
-        setTitle(seller.getAID().getName());
+        setSize(500,500);
+        setTitle(buyer.getAID().getName());
 
-        //AddBook Panel.
-        JPanel addPanel = new JPanel();
-        addPanel.setLayout(new GridLayout(0, 2));
+        //Buybook Panel.
+        JPanel buyPanel=new JPanel();
+        buyPanel.setLayout(new GridLayout(0, 2));
 
-        JLabel addLabel = new JLabel("Add a new book:");
-        addPanel.add(addLabel);
+        JLabel buyLabel=new JLabel("I want to buy:");
+        buyPanel.add(buyLabel);
         JLabel emptyLabel1 = new JLabel();
-        addPanel.add(emptyLabel1);
+        buyPanel.add(emptyLabel1);
 
         JLabel titleLabel = new JLabel("Title:");
         JTextField titleText = new JTextField();
-        addPanel.add(titleLabel);
-        addPanel.add(titleText);
+        buyPanel.add(titleLabel);
+        buyPanel.add(titleText);
 
         JLabel countLabel = new JLabel("Count:");
         JTextField countText = new JTextField();
-        addPanel.add(countLabel);
-        addPanel.add(countText);
-
-        JLabel priceLabel = new JLabel("Price:");
-        JTextField priceText = new JTextField();
-        addPanel.add(priceLabel);
-        addPanel.add(priceText);
+        buyPanel.add(countLabel);
+        buyPanel.add(countText);
 
         JLabel emptyLabel2 = new JLabel();
         //Event listener for this button.
-        JButton addButton = new JButton("add");
-        addPanel.add(emptyLabel2);
-        addPanel.add(addButton);
+        JButton buyButton = new JButton("buy");
+        buyPanel.add(emptyLabel2);
+        buyPanel.add(buyButton);
 
-        add(addPanel, BorderLayout.NORTH);
+        add(buyPanel, BorderLayout.NORTH);
 
         //ListBooks Panel.
         JPanel listPanel = new JPanel();
@@ -74,12 +69,11 @@ class SellerGui extends JFrame
 
 
         //Event listener for addButton.
-        addButton.addActionListener(e ->
+        buyButton.addActionListener(e ->
         {
             String title = titleText.getText();
             int count = Integer.parseInt(countText.getText());
-            int price = Integer.parseInt(priceText.getText());
-            oneSeller.addBook(title, count, price);
+            oneBuyer.buyBook(title, count);
         });
 
     }
