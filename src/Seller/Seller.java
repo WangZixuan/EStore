@@ -26,7 +26,7 @@ public class Seller extends Agent
     {
         catalog = new TreeMap<>();
 
-        //addBehaviour(new SellerBehaviour());
+        addBehaviour(new SellerBehaviour());
     }
 
     protected void setup()

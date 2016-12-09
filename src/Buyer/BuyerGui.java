@@ -12,6 +12,7 @@ public class BuyerGui extends JFrame
 {
     Buyer oneBuyer;
     JTextArea booksList;
+    JTextArea logArea;
 
     BuyerGui()
     {
@@ -67,6 +68,12 @@ public class BuyerGui extends JFrame
 
         add(listPanel, BorderLayout.CENTER);
 
+        //Log Panel.
+        JPanel logPanel=new JPanel();
+        logArea=new JTextArea();
+        logPanel.add(logArea);
+
+        add(logPanel, BorderLayout.SOUTH);
 
         //Event listener for addButton.
         buyButton.addActionListener(e ->
@@ -81,5 +88,10 @@ public class BuyerGui extends JFrame
     void setBooksList(String list)
     {
         booksList.setText(list);
+    }
+
+    void setLog(String log)
+    {
+        logArea.setText(log);
     }
 }
