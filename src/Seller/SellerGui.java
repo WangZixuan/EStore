@@ -7,12 +7,13 @@ import java.awt.event.WindowEvent;
 
 /**
  * Created by Zixuan Wang on 2016-11-30.
+ * Seller agent.
  */
 class SellerGui extends JFrame
 {
     Seller oneSeller;
-    JTextArea booksList;
-    JTextArea logArea;
+    private JTextArea booksList;
+    private JTextArea logArea;
 
     SellerGui()
     {
@@ -26,7 +27,7 @@ class SellerGui extends JFrame
         });
     }
 
-    public void setGui(Seller seller)
+    void setGui(Seller seller)
     {
         oneSeller = seller;
 

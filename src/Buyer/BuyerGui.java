@@ -7,12 +7,13 @@ import java.awt.event.WindowEvent;
 
 /**
  * Created by Zixuan Wang on 2016-12-09.
+ * Buyer GUI.
  */
-public class BuyerGui extends JFrame
+class BuyerGui extends JFrame
 {
-    Buyer oneBuyer;
-    JTextArea booksList;
-    JTextArea logArea;
+    private Buyer oneBuyer;
+    private JTextArea booksList;
+    private JTextArea logArea;
 
     BuyerGui()
     {
@@ -26,7 +27,7 @@ public class BuyerGui extends JFrame
         });
     }
 
-    public void setGui(Buyer buyer)
+    void setGui(Buyer buyer)
     {
         oneBuyer=buyer;
 

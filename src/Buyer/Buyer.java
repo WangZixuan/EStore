@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.Vector;
 
-enum Move{SEND, ACK, PAY, END};
+enum Move{SEND, ACK, PAY, END}
 
 /**
  * Created by Zixuan Wang on 2016-11-28.
@@ -46,6 +46,7 @@ public class Buyer extends Agent
         possessionInfo = "";
     }
 
+    @Override
     protected void setup()
     {
         System.out.println("Buyer " + getAID().getName() + " online.");
@@ -54,8 +55,8 @@ public class Buyer extends Agent
         gui.setGui(this);
         gui.setVisible(true);
 
-        //Update the list of seller agents every ten seconds.
-        addBehaviour(new TickerBehaviour(this, 10000)
+        //Update the list of seller agents every minute.
+        addBehaviour(new TickerBehaviour(this, 60000)
         {
             protected void onTick()
             {
@@ -68,7 +69,7 @@ public class Buyer extends Agent
                     DFAgentDescription[] result = DFService.search(myAgent, template);
                     allSellers.clear();
                     for (DFAgentDescription aResult : result)
-                        allSellers.addElement(aResult.getName());
+                        allSellers.add(aResult.getName());
                 }
                 catch (FIPAException fe)
                 {
@@ -79,7 +80,8 @@ public class Buyer extends Agent
 
     }
 
-    protected void takedown()
+    @Override
+    protected void takeDown()
     {
         System.out.println("Buyer " + getAID().getName() + " terminated.");
 
@@ -173,8 +175,8 @@ public class Buyer extends Agent
                             allSellersVec.add(reply.getSender());
                             allCountsVec.add(Integer.parseInt(info[1]));
                             allPriceVec.add(Integer.parseInt(info[2]));
-                            ++replyCount;
                         }
+                        ++replyCount;
 
                         if (replyCount >= allSellers.size())
                         {
