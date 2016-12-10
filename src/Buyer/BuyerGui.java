@@ -29,16 +29,16 @@ class BuyerGui extends JFrame
 
     void setGui(Buyer buyer)
     {
-        oneBuyer=buyer;
+        oneBuyer = buyer;
 
-        setSize(500,500);
+        setSize(500, 500);
         setTitle(buyer.getAID().getName());
 
         //Buybook Panel.
-        JPanel buyPanel=new JPanel();
+        JPanel buyPanel = new JPanel();
         buyPanel.setLayout(new GridLayout(0, 2));
 
-        JLabel buyLabel=new JLabel("I want to buy:");
+        JLabel buyLabel = new JLabel("I want to buy:");
         buyPanel.add(buyLabel);
         JLabel emptyLabel1 = new JLabel();
         buyPanel.add(emptyLabel1);
@@ -70,8 +70,8 @@ class BuyerGui extends JFrame
         add(listPanel, BorderLayout.CENTER);
 
         //Log Panel.
-        JPanel logPanel=new JPanel();
-        logArea=new JTextArea();
+        JPanel logPanel = new JPanel();
+        logArea = new JTextArea();
         logPanel.add(logArea);
 
         add(logPanel, BorderLayout.SOUTH);

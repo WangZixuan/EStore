@@ -28,7 +28,10 @@ public class Seller extends Agent
     {
         catalog = new TreeMap<>();
 
+        addBehaviour(new SellerCalculation());
+
         addBehaviour(new SellerDecision());
+
     }
 
     @Override
@@ -40,17 +43,19 @@ public class Seller extends Agent
         gui.setGui(this);
         gui.setVisible(true);
 
-        //Register in YellowPage.
+        //Register in the YellowPage.
         DFAgentDescription dfd = new DFAgentDescription();
         dfd.setName(getAID());
         ServiceDescription sd = new ServiceDescription();
         sd.setType("sellers");
-        sd.setName(getLocalName()+"-selling-books");
+        sd.setName(getLocalName() + "-selling-books");
         dfd.addServices(sd);
-        try {
+        try
+        {
             DFService.register(this, dfd);
         }
-        catch (FIPAException fe) {
+        catch (FIPAException fe)
+        {
             fe.printStackTrace();
         }
     }
@@ -64,10 +69,12 @@ public class Seller extends Agent
             gui.dispose();
 
         //De-register from the YellowPage.
-        try {
+        try
+        {
             DFService.deregister(this);
         }
-        catch (FIPAException fe) {
+        catch (FIPAException fe)
+        {
             fe.printStackTrace();
         }
     }
@@ -78,7 +85,7 @@ public class Seller extends Agent
 
         //If this book existed.
         if (catalog.containsKey(title))
-            count+=catalog.get(title).get(0);
+            count += catalog.get(title).get(0);
 
         infoList.add(count);
         infoList.add(price);
@@ -94,79 +101,100 @@ public class Seller extends Agent
         {
             String line = "\n";
             line += entry.getKey();
-            line+="\t\t";
+            line += "\t\t";
             ArrayList<Integer> lineInfo = entry.getValue();
-            line+=String.valueOf(lineInfo.get(0));
-            line+="\t\t";
-            line+=String.valueOf(lineInfo.get(1));
+            line += String.valueOf(lineInfo.get(0));
+            line += "\t\t";
+            line += String.valueOf(lineInfo.get(1));
 
-            result+=line;
+            result += line;
         }
 
 
         gui.setBooksList(result);
     }
 
-    private class SellerDecision extends CyclicBehaviour
+    private class SellerCalculation extends CyclicBehaviour
     {
-        private MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.CFP);
+        private MessageTemplate mt;
+
+        SellerCalculation()
+        {
+            mt = MessageTemplate.MatchPerformative(ACLMessage.CFP);
+        }
+
         @Override
         public void action()
         {
-            ACLMessage msg = myAgent.receive(mt);
+            ACLMessage msg = receive(mt);
+            if (null != msg)
+            {
+                ACLMessage reply = msg.createReply();
+                //Deal with received message, a buyer asks for info about a book.
+                String title = msg.getContent();
+                String myReply = title + "#";
+                //Search in catalog.
+                if (catalog.containsKey(title))
+                {
+                    myReply += String.valueOf(catalog.get(title).get(0)) + "#";
+                    myReply += String.valueOf(catalog.get(title).get(1));
+                    reply.setPerformative(ACLMessage.PROPOSE);
+                    reply.setContent(myReply);
+                }
+                else
+                {
+                    myReply += "0#0";
+                    reply.setPerformative(ACLMessage.REFUSE);
+                    reply.setContent(myReply);
+                }
+                send(reply);
+
+            }
+            else
+                block();
+        }
+    }
+
+    private class SellerDecision extends CyclicBehaviour
+    {
+        private MessageTemplate mt;
+
+        SellerDecision()
+        {
+            mt = MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL);
+        }
+
+        @Override
+        public void action()
+        {
+            ACLMessage msg = receive(mt);
 
             //Deal with received message.
             if (null != msg)
             {
-                ACLMessage reply = msg.createReply();
-                switch (msg.getPerformative())
+                //Buyer sends a message to me that he will buy from me.
+                //Remove the books from my catalog.
+                String[] orderInfo = msg.getContent().split("#");
+                ArrayList info = catalog.get(orderInfo[0]);
+
+                //Count of the remaining books.
+                int remaining = Integer.parseInt(info.get(0).toString()) - Integer.parseInt(orderInfo[1]);
+
+                if (remaining < 0)
+                    System.out.println("Critical error!");
+                else
                 {
-                    case ACLMessage.CFP:
-                        //A buyer asks for info about a book.
-                        String title=msg.getContent();
-                        String myReply=title+"#";
-                        //Search in catalog.
-                        if (catalog.containsKey(title))
-                        {
-                            myReply+=String.valueOf(catalog.get(title).get(0))+"#";
-                            myReply+=String.valueOf(catalog.get(title).get(1));
-                            reply.setPerformative(ACLMessage.PROPOSE);
-                            reply.setContent(myReply);
-                        }
-                        else
-                        {
-                            myReply+="0#0";
-                            reply.setPerformative(ACLMessage.REFUSE);
-                            reply.setContent(myReply);
-                        }
-                        myAgent.send(reply);
+                    info.set(0, remaining);
+                    catalog.replace(orderInfo[0], info);
 
-                        break;
-                    case ACLMessage.ACCEPT_PROPOSAL:
-                        //Buyer sends a message to me that he will buy from me.
-                        //Remove the books from my catalog.
-                        String[] orderInfo=msg.getContent().split("#");
-                        ArrayList info=catalog.get(orderInfo[0]);
-                        if (Integer.parseInt(info.get(0).toString())>Integer.parseInt(orderInfo[1]))
-                            System.out.println("Critical error!");
-                        else
-                        {
-                            int remaining=Integer.parseInt(info.get(0).toString())-Integer.parseInt(orderInfo[1]);
-                            info.set(0, remaining);
-
-                            gui.setLog("Just sell "+remaining+" books!");
-                            setListText();
-                        }
-                        break;
-                    default:
-                        break;
+                    gui.setLog("Just sell " + orderInfo[1] + " " + orderInfo[0]);
+                    setListText();
                 }
 
             }
             else
                 block();
         }
-
 
     }
 }

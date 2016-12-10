@@ -7,11 +7,11 @@ import java.awt.event.WindowEvent;
 
 /**
  * Created by Zixuan Wang on 2016-11-30.
- * Seller agent.
+ * Seller GUI.
  */
 class SellerGui extends JFrame
 {
-    Seller oneSeller;
+    private Seller oneSeller;
     private JTextArea booksList;
     private JTextArea logArea;
 
@@ -75,8 +75,8 @@ class SellerGui extends JFrame
         add(listPanel, BorderLayout.CENTER);
 
         //Log Panel.
-        JPanel logPanel=new JPanel();
-        logArea=new JTextArea();
+        JPanel logPanel = new JPanel();
+        logArea = new JTextArea();
         logPanel.add(logArea);
 
         add(logPanel, BorderLayout.SOUTH);

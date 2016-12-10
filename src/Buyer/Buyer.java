@@ -3,6 +3,7 @@ package Buyer;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.Behaviour;
+import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.TickerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
@@ -33,17 +34,14 @@ public class Buyer extends Agent
 
     private BuyerGui gui;
 
-    private String possessionInfo;
-
     private String orderInfo;
 
-    Buyer()
+    public Buyer()
     {
         catalog = new TreeMap<>();
         money = 1000;
         allSellers = new Vector();
         orderInfo = "";
-        possessionInfo = "";
     }
 
     @Override
@@ -51,32 +49,61 @@ public class Buyer extends Agent
     {
         System.out.println("Buyer " + getAID().getName() + " online.");
 
+        //Get sellers.
+        addBehaviour(
+                new OneShotBehaviour()
+                {
+                    @Override
+                    public void action()
+                    {
+                        DFAgentDescription template = new DFAgentDescription();
+                        ServiceDescription sd = new ServiceDescription();
+                        sd.setType("sellers");
+                        template.addServices(sd);
+                        try
+                        {
+                            DFAgentDescription[] result = DFService.search(myAgent, template);
+                            allSellers.clear();
+                            for (DFAgentDescription aResult : result)
+                                allSellers.add(aResult.getName());
+                        }
+                        catch (FIPAException fe)
+                        {
+                            fe.printStackTrace();
+                        }
+                    }
+                }
+        );
+
+
         gui = new BuyerGui();
         gui.setGui(this);
         gui.setVisible(true);
 
         //Update the list of seller agents every minute.
-        addBehaviour(new TickerBehaviour(this, 60000)
-        {
-            protected void onTick()
-            {
-                DFAgentDescription template = new DFAgentDescription();
-                ServiceDescription sd = new ServiceDescription();
-                sd.setType("sellers");
-                template.addServices(sd);
-                try
+        addBehaviour(
+                new TickerBehaviour(this, 60000)
                 {
-                    DFAgentDescription[] result = DFService.search(myAgent, template);
-                    allSellers.clear();
-                    for (DFAgentDescription aResult : result)
-                        allSellers.add(aResult.getName());
-                }
-                catch (FIPAException fe)
-                {
-                    fe.printStackTrace();
-                }
-            }
-        });
+                    @Override
+                    protected void onTick()
+                    {
+                        DFAgentDescription template = new DFAgentDescription();
+                        ServiceDescription sd = new ServiceDescription();
+                        sd.setType("sellers");
+                        template.addServices(sd);
+                        try
+                        {
+                            DFAgentDescription[] result = DFService.search(myAgent, template);
+                            allSellers.clear();
+                            for (DFAgentDescription aResult : result)
+                                allSellers.add(aResult.getName());
+                        }
+                        catch (FIPAException fe)
+                        {
+                            fe.printStackTrace();
+                        }
+                    }
+                });
 
     }
 
@@ -87,17 +114,6 @@ public class Buyer extends Agent
 
         if (null != gui)
             gui.dispose();
-
-        //De-register from the YellowPage.
-
-        try
-        {
-            DFService.deregister(this);
-        }
-        catch (FIPAException fe)
-        {
-            fe.printStackTrace();
-        }
     }
 
     void buyBook(String title, int count)
@@ -108,7 +124,7 @@ public class Buyer extends Agent
 
     private void setListText()
     {
-        String result = "Now I have:\n\nTitle\t\tCount\n";
+        String result = "Now I have:\nTitle\t\tCount";
 
         for (Map.Entry<String, Integer> entry : catalog.entrySet())
         {
@@ -141,11 +157,16 @@ public class Buyer extends Agent
             title = t;
             count = c;
             move = Move.SEND;
+
+            allSellersVec = new Vector<>();
+            allPriceVec = new Vector<>();
+            allCountsVec = new Vector<>();
         }
 
         @Override
         public void action()
         {
+            String log = "";
             switch (move)
             {
                 case SEND:
@@ -155,7 +176,8 @@ public class Buyer extends Agent
                         cfp.addReceiver((AID) allSellers.elementAt(i));
                     cfp.setContent(title);
                     cfp.setConversationId("book-trade");
-                    myAgent.send(cfp);
+                    cfp.setReplyWith("cfp" + System.currentTimeMillis()); //A unique value
+                    send(cfp);
                     mt = MessageTemplate.and(
                             MessageTemplate.MatchConversationId("book-trade"),
                             MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
@@ -164,7 +186,7 @@ public class Buyer extends Agent
 
                 case ACK:
                     //Here this buyer receives all info and decide which to buy.
-                    ACLMessage reply = myAgent.receive(mt);
+                    ACLMessage reply = receive(mt);
 
                     if (null != reply)
                     {
@@ -182,11 +204,10 @@ public class Buyer extends Agent
                         {
                             int decision = decideWhatToBuy();
                             if (1 == decision)
-                                gui.setLog("Not enough money.");
+                                log += "Not enough money.\n";
                             else if (2 == decision)
-                                gui.setLog("You are buying too many!");
-                            else
-                                move = Move.PAY;
+                                log += "You are buying too many!\n";
+                            move = Move.PAY;
                         }
                     }
                     else
@@ -196,7 +217,7 @@ public class Buyer extends Agent
                 case PAY:
                     //Send to all the sellers in oderInfo.
                     String[] sellersInfoForThis = orderInfo.split(";");
-                    String log = "";
+
                     for (String oneSellerInfo : sellersInfoForThis)
                     {
                         String[] details = oneSellerInfo.split("#");
@@ -208,14 +229,14 @@ public class Buyer extends Agent
                         order.addReceiver(chosenSeller);
                         order.setContent(title + "#" + chosenCount);
                         order.setConversationId("book-trade");
-                        myAgent.send(order);
+                        send(order);
 
-                        log += chosenSeller.getName() + "\t" + chosenCount + "\n";
+                        catalog.put(title, chosenCount);
+                        log += "Buy " + chosenCount + " " + title + " from " + chosenSeller.getName() + ".\n";
                     }
-                    log += "You have " + String.valueOf(money) + " yuan left";
+                    log += "You have " + String.valueOf(money) + " yuan left.";
                     gui.setLog(log);
-                    possessionInfo += title + "#" + String.valueOf(count) + "\n";
-                    gui.setBooksList(possessionInfo);
+                    setListText();
                     move = Move.END;
                     break;
                 //We omit the sellers' confirmations step.
@@ -237,14 +258,16 @@ public class Buyer extends Agent
         int decideWhatToBuy()
         {
             int orderedCount = 0;
-            while (money > 0 && orderedCount < count)
+            while (orderedCount < count)
             {
                 int minIndex = allPriceVec.indexOf(Collections.min(allPriceVec));
-                if (allCountsVec.elementAt(minIndex) + orderedCount < count)
+
+                if (Integer.MAX_VALUE==allPriceVec.elementAt(minIndex))
+                    return 2;
+
+                if (allCountsVec.elementAt(minIndex) + orderedCount <= count)
                 {
                     money -= allCountsVec.elementAt(minIndex) * allPriceVec.elementAt(minIndex);
-                    if (money < 0)
-                        return 1;
                     orderedCount += allCountsVec.elementAt(minIndex);
                     orderInfo += String.valueOf(minIndex) + "#" + String.valueOf(allCountsVec.elementAt(minIndex)) + ";";
                     allPriceVec.setElementAt(Integer.MAX_VALUE, minIndex);//Set its price to max.
@@ -252,13 +275,15 @@ public class Buyer extends Agent
                 else//What the buyer need is fewer than this seller has.
                 {
                     money -= (count - orderedCount) * allPriceVec.elementAt(minIndex);
-                    orderedCount = count;
                     orderInfo += String.valueOf(minIndex) + "#" + String.valueOf(count - orderedCount) + ";";
-                    break;
+                    orderedCount = count;
                 }
+
+                if (money < 0)
+                    return 1;
             }
 
-            return orderedCount == count ? 0 : 2;
+            return 0;
         }
     }
 
