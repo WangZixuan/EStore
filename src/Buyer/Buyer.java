@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.Vector;
 
-enum Move{SEND, ACK, PAY, END}
+enum Move{SEND, ACK, PAY, TELL, END}
 
 /**
  * Created by Zixuan Wang on 2016-11-28.
@@ -25,12 +25,14 @@ enum Move{SEND, ACK, PAY, END}
  */
 public class Buyer extends Agent
 {
+    private AID manager;
+
+    //The list of known seller agents.
+    private Vector<AID> allSellers;
+
     private Map<String, Integer> catalog;
 
     private int money;
-
-    //The list of known seller agents.
-    private Vector allSellers;
 
     private BuyerGui gui;
 
@@ -40,7 +42,7 @@ public class Buyer extends Agent
     {
         catalog = new TreeMap<>();
         money = 1000;
-        allSellers = new Vector();
+        allSellers = new Vector<>();
         orderInfo = "";
     }
 
@@ -48,6 +50,40 @@ public class Buyer extends Agent
     protected void setup()
     {
         System.out.println("Buyer " + getAID().getName() + " online.");
+
+        //Get manager and register to it.
+        addBehaviour(
+                new OneShotBehaviour()
+                {
+                    @Override
+                    public void action()
+                    {
+                        DFAgentDescription template = new DFAgentDescription();
+                        ServiceDescription sd = new ServiceDescription();
+                        sd.setType("managers");
+                        template.addServices(sd);
+                        try
+                        {
+                            DFAgentDescription[] result = DFService.search(myAgent, template);
+                            for (DFAgentDescription aResult : result)
+                                manager = aResult.getName();
+
+                            ACLMessage cfp = new ACLMessage(ACLMessage.SUBSCRIBE);
+
+                            cfp.addReceiver(manager);
+                            cfp.setContent("Buyer " + getAID().getName() + " online.");
+                            cfp.setConversationId("book-trade");
+                            cfp.setReplyWith("cfp" + System.currentTimeMillis()); //A unique value
+                            send(cfp);
+                        }
+                        catch (FIPAException fe)
+                        {
+                            fe.printStackTrace();
+                        }
+                    }
+                }
+        );
+
 
         //Get sellers.
         addBehaviour(
@@ -151,6 +187,7 @@ public class Buyer extends Agent
 
         Move move;
         private MessageTemplate mt;
+        String log;
 
         BuyerDecision(String t, int c)
         {
@@ -161,19 +198,21 @@ public class Buyer extends Agent
             allSellersVec = new Vector<>();
             allPriceVec = new Vector<>();
             allCountsVec = new Vector<>();
+
+            log = "";
         }
 
         @Override
         public void action()
         {
-            String log = "";
+
             switch (move)
             {
                 case SEND:
                     //Send the title of the book ths buyer wants.
                     ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
                     for (int i = 0; i < allSellers.size(); ++i)
-                        cfp.addReceiver((AID) allSellers.elementAt(i));
+                        cfp.addReceiver(allSellers.elementAt(i));
                     cfp.setContent(title);
                     cfp.setConversationId("book-trade");
                     cfp.setReplyWith("cfp" + System.currentTimeMillis()); //A unique value
@@ -231,15 +270,27 @@ public class Buyer extends Agent
                         order.setConversationId("book-trade");
                         send(order);
 
-                        catalog.put(title, chosenCount);
+                        //Update catalog.
+                        if (catalog.containsKey(title))
+                        {
+                            int existed = catalog.get(title);
+                            existed += chosenCount;
+                            catalog.replace(title, existed);
+                        }
+                        else
+                            catalog.put(title, chosenCount);
                         log += "Buy " + chosenCount + " " + title + " from " + chosenSeller.getName() + ".\n";
                     }
-                    log += "You have " + String.valueOf(money) + " yuan left.";
-                    gui.setLog(log);
+                    gui.setLog(log + "You have " + money + " yuan left.");
                     setListText();
-                    move = Move.END;
+                    move = Move.TELL;
                     break;
                 //We omit the sellers' confirmations step.
+                case TELL:
+                    //Tell manager what I buy.
+                    addBehaviour(new TellManager(log));
+                    move = Move.END;
+                    break;
                 case END:
                     break;
 
@@ -262,7 +313,7 @@ public class Buyer extends Agent
             {
                 int minIndex = allPriceVec.indexOf(Collections.min(allPriceVec));
 
-                if (Integer.MAX_VALUE==allPriceVec.elementAt(minIndex))
+                if (Integer.MAX_VALUE == allPriceVec.elementAt(minIndex))
                     return 2;
 
                 if (allCountsVec.elementAt(minIndex) + orderedCount <= count)
@@ -284,6 +335,30 @@ public class Buyer extends Agent
             }
 
             return 0;
+        }
+
+        private class TellManager extends OneShotBehaviour
+        {
+            String log;
+
+            TellManager(String inputLog)
+            {
+                log = inputLog;
+            }
+
+            @Override
+            public void action()
+            {
+                ACLMessage cfp = new ACLMessage(ACLMessage.SUBSCRIBE);
+
+                cfp.addReceiver(manager);
+                cfp.setContent(log);
+                cfp.setConversationId("book-trade");
+                cfp.setReplyWith("cfp" + System.currentTimeMillis()); //A unique value
+                send(cfp);
+
+            }
+
         }
     }
 

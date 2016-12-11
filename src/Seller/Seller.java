@@ -1,7 +1,9 @@
 package Seller;
 
+import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.OneShotBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
@@ -19,6 +21,8 @@ import java.util.TreeMap;
  */
 public class Seller extends Agent
 {
+    private AID manager;
+
     private Map<String, ArrayList<Integer>> catalog;
 
     //GUI of Seller agent.
@@ -38,6 +42,39 @@ public class Seller extends Agent
     protected void setup()
     {
         System.out.println("Seller " + getAID().getName() + " online.");
+
+        //Get manager and register to it.
+        addBehaviour(
+                new OneShotBehaviour()
+                {
+                    @Override
+                    public void action()
+                    {
+                        DFAgentDescription template = new DFAgentDescription();
+                        ServiceDescription sd = new ServiceDescription();
+                        sd.setType("managers");
+                        template.addServices(sd);
+                        try
+                        {
+                            DFAgentDescription[] result = DFService.search(myAgent, template);
+                            for (DFAgentDescription aResult : result)
+                                manager = aResult.getName();
+
+                            ACLMessage cfp = new ACLMessage(ACLMessage.SUBSCRIBE);
+
+                            cfp.addReceiver(manager);
+                            cfp.setContent("Seller " + getAID().getName() + " online.");
+                            cfp.setConversationId("book-trade");
+                            cfp.setReplyWith("cfp" + System.currentTimeMillis()); //A unique value
+                            send(cfp);
+                        }
+                        catch (FIPAException fe)
+                        {
+                            fe.printStackTrace();
+                        }
+                    }
+                }
+        );
 
         gui = new SellerGui();
         gui.setGui(this);
